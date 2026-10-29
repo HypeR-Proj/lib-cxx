@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 roolrz
+# SPDX-License-Identifier: Apache-2.0
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -53,3 +56,9 @@ keep.lst
 
 # Editor by-products
 .vscode/
+
+# Native SDK build artifacts
+target/
+__pycache__/
+*.pyc
+.config

@@ -1,0 +1,245 @@
+// SPDX-FileCopyrightText: 2026 roolrz
+// SPDX-License-Identifier: Apache-2.0
+
+#pragma once
+#include <stdint.h>
+#include <stddef.h>
+#include <time.h>
+#include <errno.h>
+#include <__chrono/duration.h>
+extern "C" {
+#include <hyper/thread.h>
+uint64_t hyper_cxx_clock(uint32_t);
+void hyper_cxx_sleep(uint64_t);
+void hyper_cxx_yield();
+}
+_LIBCPP_BEGIN_NAMESPACE_STD
+using __libcpp_timespec_t = ::timespec;
+// 0 is unlocked, 1 locked, 2 locked with possible waiters. The release exchange
+// publishes protected data to the next acquire RMW; futex wake only schedules.
+using __libcpp_mutex_t = uint32_t;
+#define _LIBCPP_MUTEX_INITIALIZER 0
+
+inline int __libcpp_mutex_lock(__libcpp_mutex_t *m)
+{
+	uint32_t expected = 0;
+	if (__atomic_compare_exchange_n(m, &expected, 1, false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
+		return 0;
+	while (__atomic_exchange_n(m, 2, __ATOMIC_ACQUIRE) != 0)
+		hyper_runtime_wait_u32(m, 2, UINT64_MAX);
+	return 0;
+}
+
+inline bool __libcpp_mutex_trylock(__libcpp_mutex_t *m)
+{
+	uint32_t v = 0;
+	return __atomic_compare_exchange_n(m, &v, 1, false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED);
+}
+
+inline int __libcpp_mutex_unlock(__libcpp_mutex_t *m)
+{
+	if (__atomic_exchange_n(m, 0, __ATOMIC_RELEASE) == 2)
+		hyper_runtime_wake_u32(m, 1);
+	return 0;
+}
+
+inline int __libcpp_mutex_destroy(__libcpp_mutex_t *)
+{
+	return 0;
+}
+
+// Snapshot while holding the associated mutex, unlock, then compare-and-wait.
+// A signal between unlock and wait changes the sequence and prevents sleeping.
+using __libcpp_condvar_t = uint32_t;
+#define _LIBCPP_CONDVAR_INITIALIZER 0
+
+inline int __libcpp_condvar_signal(__libcpp_condvar_t *c)
+{
+	__atomic_fetch_add(c, 1, __ATOMIC_RELEASE);
+	hyper_runtime_wake_u32(c, 1);
+	return 0;
+}
+
+inline int __libcpp_condvar_broadcast(__libcpp_condvar_t *c)
+{
+	__atomic_fetch_add(c, 1, __ATOMIC_RELEASE);
+	hyper_runtime_wake_u32(c, UINT32_MAX);
+	return 0;
+}
+
+inline int __libcpp_condvar_wait(__libcpp_condvar_t *c, __libcpp_mutex_t *m)
+{
+	auto seq = __atomic_load_n(c, __ATOMIC_ACQUIRE);
+	__libcpp_mutex_unlock(m);
+	hyper_runtime_wait_u32(c, seq, UINT64_MAX);
+	return __libcpp_mutex_lock(m);
+}
+
+inline int __libcpp_condvar_timedwait(__libcpp_condvar_t *c, __libcpp_mutex_t *m,
+				      __libcpp_timespec_t *t)
+{
+	auto seq = __atomic_load_n(c, __ATOMIC_ACQUIRE);
+	if (t->tv_nsec < 0 || t->tv_nsec >= 1000000000)
+		return EINVAL;
+	uint64_t wall = hyper_cxx_clock(1), mono = hyper_cxx_clock(0);
+	__int128 until = __int128(t->tv_sec) * 1000000000 + t->tv_nsec;
+	__int128 delta = until > wall ? until - wall : 0;
+	// UINT64_MAX means infinite to Native; finite waits must never become infinite.
+	uint64_t deadline = delta >= UINT64_MAX - mono ? UINT64_MAX - 1 : mono + uint64_t(delta);
+	__libcpp_mutex_unlock(m);
+	int woke = hyper_runtime_wait_u32(c, seq, deadline);
+	__libcpp_mutex_lock(m);
+	return woke ? 0 : ETIMEDOUT;
+}
+
+inline int __libcpp_condvar_destroy(__libcpp_condvar_t *)
+{
+	return 0;
+}
+
+using __libcpp_exec_once_flag = uint32_t;
+#define _LIBCPP_EXEC_ONCE_INITIALIZER 0
+
+inline int __libcpp_execute_once(__libcpp_exec_once_flag *f, void (*init)())
+{
+	uint32_t v = 0;
+	if (__atomic_compare_exchange_n(f, &v, 1, false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE)) {
+		init();
+		__atomic_store_n(f, 2, __ATOMIC_RELEASE);
+		hyper_runtime_wake_u32(f, UINT32_MAX);
+	} else
+		while (__atomic_load_n(f, __ATOMIC_ACQUIRE) != 2)
+			hyper_runtime_wait_u32(f, 1, UINT64_MAX);
+	return 0;
+}
+
+using __libcpp_thread_id = uintptr_t;
+
+struct __libcpp_thread_t {
+	uintptr_t token = 0, id = 0;
+};
+
+#define _LIBCPP_NULL_THREAD (__libcpp_thread_t{})
+
+inline bool __libcpp_thread_id_equal(uintptr_t a, uintptr_t b)
+{
+	return a == b;
+}
+
+inline bool __libcpp_thread_id_less(uintptr_t a, uintptr_t b)
+{
+	return a < b;
+}
+
+inline uintptr_t __libcpp_thread_get_id(const __libcpp_thread_t *t)
+{
+	return t->id;
+}
+
+inline bool __libcpp_thread_isnull(const __libcpp_thread_t *t)
+{
+	return !t->token;
+}
+
+uintptr_t __libcpp_thread_get_current_id();
+int __libcpp_thread_create(__libcpp_thread_t *, void *(*)(void *), void *);
+
+inline int __libcpp_thread_join(__libcpp_thread_t *t)
+{
+	return hyper_runtime_thread_join(t->token) == 0 ? 0 : 22;
+}
+
+inline int __libcpp_thread_detach(__libcpp_thread_t *t)
+{
+	hyper_runtime_thread_release(t->token);
+	return 0;
+}
+
+inline void __libcpp_thread_yield()
+{
+	hyper_cxx_yield();
+}
+
+inline void __libcpp_thread_sleep_for(const chrono::nanoseconds &n)
+{
+	if (n.count() > 0)
+		hyper_cxx_sleep(n.count());
+}
+
+#define _LIBCPP_TLS_DESTRUCTOR_CC
+using __libcpp_tls_key = uintptr_t;
+
+inline int __libcpp_tls_create(uintptr_t *key, void (*dtor)(void *))
+{
+	*key = hyper_runtime_tls_create(dtor);
+	return *key ? 0 : 12;
+}
+
+inline void *__libcpp_tls_get(uintptr_t key)
+{
+	return hyper_runtime_tls_get(key);
+}
+
+inline int __libcpp_tls_set(uintptr_t key, void *value)
+{
+	hyper_runtime_tls_set(key, value);
+	return 0;
+}
+
+struct __libcpp_recursive_mutex_t {
+	uint32_t mutex = 0;
+	uintptr_t owner = 0;
+	uint32_t depth = 0;
+};
+
+inline int __libcpp_recursive_mutex_init(__libcpp_recursive_mutex_t *m)
+{
+	*m = {};
+	return 0;
+}
+
+inline int __libcpp_recursive_mutex_lock(__libcpp_recursive_mutex_t *m)
+{
+	auto me = __libcpp_thread_get_current_id();
+	if (__atomic_load_n(&m->owner, __ATOMIC_ACQUIRE) == me) {
+		if (m->depth == UINT32_MAX)
+			return EAGAIN;
+		++m->depth;
+		return 0;
+	}
+	__libcpp_mutex_lock(&m->mutex);
+	m->depth = 1;
+	__atomic_store_n(&m->owner, me, __ATOMIC_RELEASE);
+	return 0;
+}
+
+inline bool __libcpp_recursive_mutex_trylock(__libcpp_recursive_mutex_t *m)
+{
+	auto me = __libcpp_thread_get_current_id();
+	if (__atomic_load_n(&m->owner, __ATOMIC_ACQUIRE) == me) {
+		if (m->depth == UINT32_MAX)
+			return false;
+		++m->depth;
+		return true;
+	}
+	if (!__libcpp_mutex_trylock(&m->mutex))
+		return false;
+	m->depth = 1;
+	__atomic_store_n(&m->owner, me, __ATOMIC_RELEASE);
+	return true;
+}
+
+inline int __libcpp_recursive_mutex_unlock(__libcpp_recursive_mutex_t *m)
+{
+	if (--m->depth)
+		return 0;
+	__atomic_store_n(&m->owner, 0, __ATOMIC_RELEASE);
+	return __libcpp_mutex_unlock(&m->mutex);
+}
+
+inline int __libcpp_recursive_mutex_destroy(__libcpp_recursive_mutex_t *)
+{
+	return 0;
+}
+
+_LIBCPP_END_NAMESPACE_STD

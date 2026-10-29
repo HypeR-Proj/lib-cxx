@@ -64,7 +64,9 @@ void thread::detach() {
 }
 
 unsigned thread::hardware_concurrency() noexcept {
-#if defined(_SC_NPROCESSORS_ONLN)
+#if defined(__HYPER__)
+  return 0; // Native has no public CPU-count query; the standard permits unknown.
+#elif defined(_SC_NPROCESSORS_ONLN)
   long result = sysconf(_SC_NPROCESSORS_ONLN);
   // sysconf returns -1 if the name is invalid, the option does not exist or
   // does not have a definite limit.
@@ -123,10 +125,14 @@ public:
 };
 
 class _LIBCPP_HIDDEN __thread_struct_imp {
+#if !defined(__HYPER__)
   typedef vector<__assoc_sub_state*, __hidden_allocator<__assoc_sub_state*> > _AsyncStates;
+#endif
   typedef vector<pair<condition_variable*, mutex*>, __hidden_allocator<pair<condition_variable*, mutex*> > > _Notify;
 
+#if !defined(__HYPER__)
   _AsyncStates async_states_;
+#endif
   _Notify notify_;
 
   __thread_struct_imp(const __thread_struct_imp&);
@@ -145,20 +151,24 @@ __thread_struct_imp::~__thread_struct_imp() {
     i->first->notify_all();
     i->second->unlock();
   }
+#if !defined(__HYPER__)
   for (_AsyncStates::iterator i = async_states_.begin(), e = async_states_.end(); i != e; ++i) {
     (*i)->__make_ready();
     (*i)->__release_shared();
   }
+#endif
 }
 
 void __thread_struct_imp::notify_all_at_thread_exit(condition_variable* cv, mutex* m) {
   notify_.push_back(pair<condition_variable*, mutex*>(cv, m));
 }
 
+#if !defined(__HYPER__)
 void __thread_struct_imp::__make_ready_at_thread_exit(__assoc_sub_state* __s) {
   async_states_.push_back(__s);
   __s->__add_shared();
 }
+#endif
 
 // __thread_struct
 
@@ -170,6 +180,8 @@ void __thread_struct::notify_all_at_thread_exit(condition_variable* cv, mutex* m
   __p_->notify_all_at_thread_exit(cv, m);
 }
 
+#if !defined(__HYPER__)
 void __thread_struct::__make_ready_at_thread_exit(__assoc_sub_state* __s) { __p_->__make_ready_at_thread_exit(__s); }
+#endif
 
 _LIBCPP_END_NAMESPACE_STD

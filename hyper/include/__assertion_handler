@@ -1,0 +1,5 @@
+// SPDX-FileCopyrightText: 2026 roolrz
+// SPDX-License-Identifier: Apache-2.0
+
+extern "C" [[noreturn]] void hyper_cxx_fatal(const char *);
+#define _LIBCPP_ASSERTION_HANDLER(message) hyper_cxx_fatal(message)
