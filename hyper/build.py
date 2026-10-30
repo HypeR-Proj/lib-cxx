@@ -4,13 +4,12 @@
 """Build libc++ for the Native SDK using the shared musl C subset."""
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor
-import hashlib
 import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = """algorithm atomic call_once condition_variable condition_variable_destructor
@@ -56,40 +55,11 @@ def build(sdk, output, install=False, jobs=4):
     flags += [arg for path in includes for arg in ("-I", str(path))]
     files = [ROOT / "src" / (name + ".cpp") for name in SOURCES]
     files += [ROOT / "hyper/runtime.cc", ROOT / "hyper/os.cc"]
-    fingerprint = hashlib.sha256(json.dumps(flags).encode())
-    fingerprint.update(subprocess.check_output([compiler, "--version"]))
-    inputs = set(files + [Path(__file__)])
-    for directory in includes + [ROOT / "src/include", ROOT / "src/support"]:
-        inputs.update(path for path in directory.rglob("*") if path.is_file())
-    for path in sorted(inputs):
-        fingerprint.update(str(path).encode())
-        fingerprint.update(path.read_bytes())
-    stamp, archive = output / "build.sha256", output / "libc++.a"
-    if (
-        not archive.exists()
-        or not stamp.exists()
-        or stamp.read_text() != fingerprint.hexdigest()
-    ):
-
-        def compile_source(source):
-            obj = output / (source.stem + ".o")
-            extra = ["-D_LIBCPP_BUILDING_LIBRARY"] if source.suffix == ".cpp" else []
-            subprocess.run(
-                flags + extra + ["-c", str(source), "-o", str(obj)], check=True
-            )
-            return str(obj)
-
-        with ThreadPoolExecutor(max_workers=jobs) as pool:
-            objects = list(pool.map(compile_source, files))
-        temporary = output / "libc++.tmp.a"
-        temporary.unlink(missing_ok=True)
-        archiver = os.environ.get(
-            "LLVM_AR",
-            str(Path(shutil.which(compiler) or compiler).with_name("llvm-ar")),
-        )
-        subprocess.run([archiver, "rcs", str(temporary)] + objects, check=True)
-        temporary.replace(archive)
-        stamp.write_text(fingerprint.hexdigest())
+    sys.path.insert(0, str(sdk / "share/hyper"))
+    from native_library import build_archive
+    archive = build_archive(ROOT, sdk, output, "libc++.a", flags, files,
+                            includes + [ROOT / "src/include", ROOT / "src/support"], jobs=jobs,
+                            extra=lambda source: ["-D_LIBCPP_BUILDING_LIBRARY"] if source.suffix == ".cpp" else [])
     if install:
         shutil.copytree(ROOT / "include", sdk / "include/c++/v1", dirs_exist_ok=True)
         shutil.copytree(
