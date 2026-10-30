@@ -197,7 +197,7 @@ def build(args):
         "sdk": identity,
         "sdk_libraries": {
             name: hashlib.sha256((sdk / "lib" / name).read_bytes()).hexdigest()
-            for name in ("libc.a", "libc++.a", "libhyper.so", "libcompiler-builtins.a")
+            for name in ("libc.a", "libc++.a", "libsystem.so", "libcompiler-builtins.a")
         },
         "binary": str(binary),
         "binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
