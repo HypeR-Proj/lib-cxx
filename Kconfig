@@ -1,0 +1,4 @@
+# SPDX-FileCopyrightText: 2026 roolrz
+# SPDX-License-Identifier: Apache-2.0
+
+# lib-cxx: supported APIs are fixed by the SDK port, with no optional features.

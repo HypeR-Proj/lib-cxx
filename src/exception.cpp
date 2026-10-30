@@ -34,5 +34,7 @@ using namespace __cxxabiv1;
 #else
 #  include "include/atomic_support.h"
 #  include "support/runtime/exception_fallback.ipp"
-#  include "support/runtime/exception_pointer_unimplemented.ipp"
+#  if !defined(__HYPER__)
+#    include "support/runtime/exception_pointer_unimplemented.ipp"
+#  endif
 #endif

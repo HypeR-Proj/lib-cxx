@@ -1,0 +1,48 @@
+// SPDX-FileCopyrightText: 2026 roolrz
+//===----------------------------------------------------------------------===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+
+#ifndef _LIBCPP___CONFIG_SITE
+#define _LIBCPP___CONFIG_SITE
+
+#if defined(__EXCEPTIONS) || defined(__GXX_RTTI)
+#error "HypeR libc++ requires -fno-exceptions -fno-rtti"
+#endif
+
+#define _LIBCPP_ABI_VERSION 1
+#define _LIBCPP_ABI_NAMESPACE __hyper_cxx
+#define _LIBCPP_ABI_FORCE_ITANIUM 0
+#define _LIBCPP_ABI_FORCE_MICROSOFT 0
+#define _LIBCPP_HAS_THREADS 1
+#define _LIBCPP_HAS_MONOTONIC_CLOCK 1
+#define _LIBCPP_HAS_TERMINAL 0
+// The Native musl fork provides a subset, not the Linux musl platform surface.
+#define _LIBCPP_HAS_MUSL_LIBC 0
+#define _LIBCPP_HAS_THREAD_API_PTHREAD 0
+#define _LIBCPP_HAS_THREAD_API_EXTERNAL 1
+#define _LIBCPP_HAS_THREAD_API_WIN32 0
+#define _LIBCPP_HAS_THREAD_API_C11 0
+
+#define _LIBCPP_HAS_VENDOR_AVAILABILITY_ANNOTATIONS 0
+
+#define _LIBCPP_HAS_FILESYSTEM 0
+#define _LIBCPP_HAS_RANDOM_DEVICE 0
+#define _LIBCPP_HAS_LOCALIZATION 0
+#define _LIBCPP_HAS_UNICODE 0
+#define _LIBCPP_HAS_WIDE_CHARACTERS 0
+
+#define _LIBCPP_HAS_TIME_ZONE_DATABASE 0
+#define _LIBCPP_INSTRUMENTED_WITH_ASAN 0
+
+// PSTL backends
+#define _LIBCPP_PSTL_BACKEND_SERIAL 1
+
+// Hardening.
+#define _LIBCPP_HARDENING_MODE_DEFAULT 2
+
+#endif // _LIBCPP___CONFIG_SITE

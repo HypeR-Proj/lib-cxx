@@ -11,8 +11,8 @@
 
 namespace std {
 
-static constinit std::terminate_handler __terminate_handler   = nullptr;
-static constinit std::unexpected_handler __unexpected_handler = nullptr;
+static constinit std::terminate_handler __terminate_handler   = std::abort;
+static constinit std::unexpected_handler __unexpected_handler = std::terminate;
 
 // libcxxrt provides implementations of these functions itself.
 unexpected_handler set_unexpected(unexpected_handler func) noexcept {
@@ -51,8 +51,12 @@ terminate_handler get_terminate() noexcept { return __libcpp_atomic_load(&__term
 bool uncaught_exception() noexcept { return uncaught_exceptions() > 0; }
 
 int uncaught_exceptions() noexcept {
+#if !_LIBCPP_HAS_EXCEPTIONS
+  return 0;
+#else
 #warning uncaught_exception not yet implemented
   __libcpp_verbose_abort("uncaught_exceptions not yet implemented\n");
+#endif
 }
 
 exception::~exception() noexcept {}

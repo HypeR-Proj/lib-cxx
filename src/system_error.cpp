@@ -197,8 +197,12 @@ string do_strerror_r(int ev) {
   const char* error_message = handle_strerror_r_return(::strerror_r(ev, buffer, strerror_buff_size), buffer);
   // If we didn't get any message, print one now.
   if (!error_message[0]) {
+#if defined(__HYPER__)
+    error_message = "Unknown error";
+#else
     std::snprintf(buffer, strerror_buff_size, "Unknown error %d", ev);
     error_message = buffer;
+#endif
   }
   errno = old_errno;
   return string(error_message);

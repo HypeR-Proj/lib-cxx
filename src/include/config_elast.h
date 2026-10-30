@@ -27,6 +27,8 @@
 #  define _LIBCPP_ELAST __ELASTERROR
 #elif defined(__NuttX__)
 // No _LIBCPP_ELAST needed on NuttX
+#elif defined(__HYPER__)
+// The Native C-locale implementation handles every integer error code.
 #elif defined(__Fuchsia__)
 // No _LIBCPP_ELAST needed on Fuchsia
 #elif defined(__wasi__)

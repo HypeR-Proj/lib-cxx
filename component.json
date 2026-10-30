@@ -1,0 +1,23 @@
+{
+  "SPDX-FileCopyrightText": "2026 roolrz",
+  "SPDX-License-Identifier": "Apache-2.0",
+  "version": 1,
+  "name": "lib-cxx",
+  "kind": "library",
+  "packages": [],
+  "tests": [
+    [
+      "python3",
+      "{component}/hyper/check.py",
+      "--workspace",
+      "{system}"
+    ]
+  ],
+  "documentation": {
+    "pages": [
+      "README.md",
+      "CONTRIBUTING.md",
+      "SECURITY.md"
+    ]
+  }
+}

@@ -1,4 +1,6 @@
 {
+  "SPDX-FileCopyrightText": "2026 roolrz",
+  "SPDX-License-Identifier": "Apache-2.0",
   "project": "LLVM libc++",
   "version": "21.1.8",
   "archive_sha256": "4331876d450ee0b36f0ba4c8e55a3091b3e4f69b61e4379a08f4e614e97de5b5",
