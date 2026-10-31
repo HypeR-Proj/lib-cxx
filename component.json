@@ -19,5 +19,36 @@
       "CONTRIBUTING.md",
       "SECURITY.md"
     ]
+  },
+  "artifacts": [
+    {
+      "source": "{apps}/cxx-standard-test",
+      "destination": "bin/cxx-standard-test",
+      "mode": "0755",
+      "profiles": [
+        "development"
+      ],
+      "environment": "system"
+    }
+  ],
+  "build": {
+    "actions": {
+      "all": [
+        [
+          "make",
+          "-C",
+          "{workspace}",
+          "sdk"
+        ]
+      ],
+      "build": [
+        [
+          "make",
+          "-C",
+          "{workspace}",
+          "sdk"
+        ]
+      ]
+    }
   }
 }
