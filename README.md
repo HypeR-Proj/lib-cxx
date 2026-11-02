@@ -64,22 +64,7 @@ library has no dependency on filesystem code.
 The host compiler must meet upstream libc++'s requirement: Clang 19 or later
 (AppleClang 15 or later on macOS; use upstream LLVM for RISC-V cross compilation).
 
-The optional [F2FS consumer builder](hyper/build-f2fs-probe.py) accepts a checkout
-of the preserved F2FS port (`c8ba1d4048827da6fcd679a04c7ff903c44bb940`). It
-regenerates patched sources from verified archives, builds the media core with
-`hyper-clang++`, and links the existing Rust RAM probe against the public SDK:
-
-```sh
-python3 stdlib/cxx/hyper/build-f2fs-probe.py --source /path/to/f2fs-checkout \
-  --sdk target/sdk/aarch64 --output target/f2fs-public-sdk --fetch
-```
-
-Install the emitted probe in a disposable HypeR image as `/bin/f2fs-sdk-smoke`
-and run `/bin/f2fs-sdk-smoke ram`. It formats an owned RAM device, writes and
-checks 4 MiB, synchronizes, closes/remounts, renames, and checks truncate/regrow
-zeroing. The fixture does not change production filesystem selection. A normal
-library build never fetches or compiles F2FS.
-
-Full disk-worker acceptance also needs the preserved port's Rust filesystem
-client fixes for remote recursive directory removal. Those remain with that
-port; the RAM probe above isolates the C++ media core and its standard libraries.
+F2FS consumer compilation and filesystem acceptance belong to the
+[fs-f2fs service](https://github.com/HypeR-Proj/fs-f2fs) and the system test suite.
+Its checked-in media sources compile against this public SDK. This repository
+owns C++ runtime tests and does not fetch, patch or build filesystem sources.
